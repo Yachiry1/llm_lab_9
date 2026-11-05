@@ -4,21 +4,7 @@ import os
 
 import gradio as gr
 
-try:
-    from agent import chat as agent_chat
-except ImportError:
-    agent_chat = None
-
-
-def _temporary_chat(message: str, history: list[dict], api_key: str) -> tuple[str, list[str]]:
-    """Temporary fallback; remove after agent.chat is implemented."""
-    if not api_key.strip():
-        return "Please enter your Groq API key before sending a message.", []
-    return (
-        "The conversational backend is not available yet. "
-        "This temporary response confirms that the Gradio interface is working.",
-        [],
-    )
+from agent import chat as agent_chat
 
 
 def _format_tools(tool_names: list[str]) -> str:
@@ -33,9 +19,8 @@ def respond(message: str, history: list[dict], api_key: str):
     if not message:
         return "", history, history, _format_tools([])
 
-    backend = agent_chat or _temporary_chat
     try:
-        response, tools_used = backend(message, list(history), api_key or "")
+        response, tools_used = agent_chat(message, list(history), api_key or "")
         if not isinstance(response, str) or not isinstance(tools_used, list):
             raise ValueError("Unexpected response from agent.chat")
         tools_used = [str(tool_name) for tool_name in tools_used]
@@ -56,7 +41,7 @@ def clear_chat():
     return [], [], "", _format_tools([])
 
 
-with gr.Blocks(title="Survival AI") as demo:
+with gr.Blocks(title="Survival AI", analytics_enabled=False) as demo:
     gr.Markdown(
         "# Survival AI\n"
         "A conversational assistant for practical survival guidance, planning, "

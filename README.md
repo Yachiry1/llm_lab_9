@@ -5,9 +5,8 @@ incrementally with Python, Groq, Gradio, and six custom Python tools. Static
 knowledge lives in a local JSON file. GitHub hosts collaboration; Render is the
 intended deployment target.
 
-All six tools and the survival/first-aid guides are implemented. The Groq agent
-and Gradio UI remain placeholders. No automated tests or deployment configuration
-are included.
+The Gradio UI, Groq agent, all six tools, and survival/first-aid guides are
+integrated. No automated tests or deployment configuration are included.
 
 ## Project structure
 
@@ -24,7 +23,7 @@ survival-ai/
 
 ## Architecture and ownership
 
-| File | Responsibility when implemented |
+| File | Responsibility |
 | --- | --- |
 | `app.py` | Gradio chat UI, password-masked API key input, and per-session message history; calls `agent.chat`. |
 | `agent.py` | Groq client/API communication, history processing, tool schemas, dispatch, and the tool-calling loop. |
@@ -32,8 +31,7 @@ survival-ai/
 | `survival_data.json` | Static guidelines under `survival_guides` and `first_aid_guides`. |
 | `requirements.txt` | Only the direct runtime dependencies: `groq` and `gradio`. |
 
-Preferred model: `openai/gpt-oss-20b`, subject to tool-calling availability on Groq
-when the agent is implemented. Model selection belongs in `agent.py`.
+The agent uses `openai/gpt-oss-20b`. Model selection belongs in `agent.py`.
 
 Data flow: Gradio → `agent.chat` → Groq → tool calls dispatched to `tools.py` →
 JSON results returned to Groq → final response and executed tool names → Gradio.
@@ -65,14 +63,14 @@ chat(
   Use `[]` when no tool ran. A tool invocation that returns an error still counts;
   an unknown name or rejected arguments that never invoke a function do not.
 
-`app.py` will own session history using Gradio session state, append the current
-user message and returned assistant response once, and display executed tools
+`app.py` owns session history using Gradio session state, appends the current
+user message and returned assistant response once, and displays executed tools
 separately. Clearing a chat clears that session's history. API keys and messages
 must not be shared through module-level state or saved to disk. The agent creates
 its Groq messages from a copy of the supplied history; intermediate tool messages
 remain local to that invocation.
 
-The future agent will return a safe, displayable error response for missing keys,
+The agent returns a safe, displayable error response for missing keys,
 API failures, or tool-loop exhaustion, preserving the list of tools already run.
 Raw exceptions and credentials must not reach the UI.
 
@@ -84,7 +82,7 @@ annotations below describe the shared interfaces of the six implemented function
 The schemas in `agent.py` must match these names, arguments, required fields, and
 constraints. The first three Python functions default missing arguments to `None`
 so omitted required inputs return `invalid_arguments` instead of raising `TypeError`.
-Future agent schemas must still require the documented required arguments.
+Agent schemas require the documented required arguments.
 
 Every successful call returns `{"ok": true, "data": ...}` with the function's
 data shape below. Every invalid argument or unavailable guide returns
@@ -284,19 +282,23 @@ They are educational summaries; the numerical risk bands are project rules.
 
 ## Local setup
 
-From this directory, create and activate a Python virtual environment, then install:
+Use Python 3.10 or newer. From the project root, run in PowerShell:
 
 ```text
 python -m venv .venv
-python -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe app.py
 ```
 
-Run the install command after activating the environment using your shell's
-activation command. Dependencies are intentionally unpinned at this scaffold stage;
-record compatible versions after integration. There is no runnable app yet.
+Open `http://localhost:7860`, enter your Groq API key, and send a message. The UI
+shows tools executed for the latest response below the conversation. Clear Chat
+resets this session's conversation and tools display; it leaves the key input intact.
+The direct dependencies are pinned to the versions used for integration checks.
+On other platforms, use `.venv/bin/python` for the install and launch commands.
 
-The future UI must accept the user's own Groq API key through a password-masked
-input. Do not put real keys in source files, example messages, screenshots, or Git
+The UI accepts the user's own Groq API key through a password-masked input.
+The key is passed to a per-request Groq client, not stored in conversation history,
+files, or application logs. Do not put real keys in source files, example messages, screenshots, or Git
 history. `.env` files are ignored but are not required for this UI-based flow.
 
 ## Incremental collaboration
@@ -304,8 +306,8 @@ history. `.env` files are ignored but are not required for this UI-based flow.
 Developer 1 owns the AI/backend work, including `agent.py` and this first increment
 of three tools on `feature/ai-agent`. Coordinate later edits to shared `tools.py`
 and `survival_data.json` with Developer 2 to avoid conflicting changes.
-Implement `app.py` in a later integration branch using the documented `chat`
-contract. Coordinate any contract changes in the README and both affected modules.
+Developer 2 owns the Gradio UI and the other three tools. Coordinate any contract
+changes in the README and both affected modules.
 
 Start with a scaffold commit. For each increment, branch from the latest `main`,
 make focused commits, push the branch to GitHub, and open a pull request for the
@@ -316,5 +318,4 @@ other developer to review before merging. Suggested increments:
 3. Integrate the Gradio UI, user-entered keys, and session history.
 4. Prepare and verify deployment on Render after local integration works.
 
-Do not commit secrets. Deployment setup and runtime implementation belong to later
-increments.
+Do not commit secrets. Render deployment setup remains a later increment.
