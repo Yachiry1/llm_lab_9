@@ -69,8 +69,7 @@ API-ключ можна отримати на https://console.groq.com/keys.
 
 ## Посилання
 
-- **Запущений застосунок:** [Render URL]
-- **Програмний код:** [GitHub URL]
+- **Запущений застосунок:** https://llm-lab-9.onrender.com/
 
 ## Примітка
 
