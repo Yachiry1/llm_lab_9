@@ -68,7 +68,7 @@ with gr.Blocks(title="Survival AI") as demo:
         type="password",
         placeholder="Enter your API key for this session",
     )
-    chatbot = gr.Chatbot(label="Conversation", type="messages", height=420)
+    chatbot = gr.Chatbot(label="Conversation", height=420)
     session_history = gr.State([])
 
     with gr.Row():
