@@ -8,43 +8,170 @@
         "If you cannot safely find your route, contact local emergency services with your location.",
         "Remain where rescuers can find you unless immediate danger requires moving."
       ],
-      "warnings": ["Avoid wandering into unfamiliar terrain."]
+      "warnings": [
+        "Avoid wandering into unfamiliar terrain."
+      ]
     },
     "cold_weather": {
       "topic": "cold_weather",
       "title": "Cold weather",
-      "steps": ["Put on dry insulating layers.", "Use available shelter to reduce weather exposure.", "Contact emergency services if you cannot stay warm."],
-      "warnings": ["Weather and temperature can change while you wait."]
+      "steps": [
+        "Put on dry insulating layers.",
+        "Use available shelter to reduce weather exposure.",
+        "Contact emergency services if you cannot stay warm."
+      ],
+      "warnings": [
+        "Weather and temperature can change while you wait."
+      ]
     },
     "water": {
       "topic": "water",
       "title": "Water shortage",
-      "steps": ["Check your remaining drinking water.", "Use appropriate treatment supplies before drinking collected water.", "Seek assistance if you cannot obtain safe drinking water."],
-      "warnings": ["Do not assume untreated water is safe."]
+      "steps": [
+        "Check your remaining drinking water.",
+        "Use appropriate treatment supplies before drinking collected water.",
+        "Seek assistance if you cannot obtain safe drinking water."
+      ],
+      "warnings": [
+        "Do not assume untreated water is safe."
+      ]
     },
     "shelter": {
       "topic": "shelter",
       "title": "Emergency shelter",
-      "steps": ["Use a tent, tarp, bivy, or emergency blanket for protection.", "Keep yourself and your supplies dry.", "Make your location visible to rescuers."],
-      "warnings": ["Temporary shelter does not guarantee protection from severe weather."]
+      "steps": [
+        "Use a tent, tarp, bivy, or emergency blanket for protection.",
+        "Keep yourself and your supplies dry.",
+        "Make your location visible to rescuers."
+      ],
+      "warnings": [
+        "Temporary shelter does not guarantee protection from severe weather."
+      ]
     },
     "fire": {
       "topic": "fire",
       "title": "Fire precautions",
-      "steps": ["Check local fire restrictions before using a fire starter."],
-      "warnings": ["Do not light a fire during high wildfire risk."]
+      "steps": [
+        "Check local fire restrictions before using a fire starter."
+      ],
+      "warnings": [
+        "Do not light a fire during high wildfire risk."
+      ]
     },
     "navigation": {
       "topic": "navigation",
       "title": "Navigation",
-      "steps": ["Use familiar navigation tools to establish your location before moving."],
-      "warnings": ["Uncertain navigation can make rescue more difficult."]
+      "steps": [
+        "Use familiar navigation tools to establish your location before moving."
+      ],
+      "warnings": [
+        "Uncertain navigation can make rescue more difficult."
+      ]
     },
     "signaling": {
       "topic": "signaling",
       "title": "Signaling for help",
-      "steps": ["Use a whistle or signal mirror to attract rescuers' attention."],
-      "warnings": ["Conserve batteries when using a light for signaling."]
+      "steps": [
+        "Use a whistle or signal mirror to attract rescuers' attention."
+      ],
+      "warnings": [
+        "Conserve batteries when using a light for signaling."
+      ]
+    }
+  },
+  "first_aid_guides": {
+    "bleeding": {
+      "title": "Minor cuts and bleeding",
+      "steps": [
+        "Wash your hands or use clean gloves if available.",
+        "Apply gentle, steady pressure with clean gauze or cloth until bleeding stops.",
+        "Rinse a minor cut with clean running water, remove visible loose debris, and cover it with a sterile dressing."
+      ],
+      "warnings": [
+        "Do not remove deeply embedded objects or probe a wound.",
+        "Call emergency services for severe bleeding, a deep or gaping wound, or bleeding that does not stop with steady pressure."
+      ],
+      "seek_help_if": [
+        "The wound is deep, contaminated, caused by a bite, or may need tetanus care.",
+        "Redness, swelling, warmth, pus, fever, numbness, or loss of movement develops."
+      ]
+    },
+    "burns": {
+      "title": "Minor burns",
+      "steps": [
+        "Move away from the heat source and remove nearby jewelry or tight items unless stuck to skin.",
+        "Cool a minor burn under cool running water for 20 minutes.",
+        "Loosely cover the burn with a sterile non-stick dressing or clean plastic wrap."
+      ],
+      "warnings": [
+        "Do not use ice, creams, grease, or adhesive dressings, and do not break blisters.",
+        "Call emergency services for breathing difficulty, electrical or chemical burns, or large, deep, charred, white, or leathery burns."
+      ],
+      "seek_help_if": [
+        "The burn involves the face, neck, hands, feet, genitals, a major joint, or circles a limb.",
+        "Pain, redness, swelling, drainage, or fever worsens."
+      ]
+    },
+    "sprain": {
+      "title": "Suspected sprain",
+      "steps": [
+        "Stop using the injured joint and protect it from further strain.",
+        "Apply a wrapped cold pack for up to 20 minutes at a time and elevate the limb if comfortable.",
+        "Use light compression only if it does not cause numbness, tingling, color change, or more pain."
+      ],
+      "warnings": [
+        "Do not force the joint back into position or continue activity through significant pain."
+      ],
+      "seek_help_if": [
+        "There is deformity, severe pain, numbness, poor circulation, an open wound, or inability to bear weight.",
+        "Symptoms are severe, worsening, or not improving."
+      ]
+    },
+    "hypothermia": {
+      "title": "Suspected hypothermia",
+      "steps": [
+        "Call emergency services; hypothermia can be life-threatening.",
+        "Move the person gently to shelter, remove wet clothing, and wrap them in dry insulating layers, including the head.",
+        "Warm the center of the body gradually. If fully alert and able to swallow, offer a warm non-alcoholic drink."
+      ],
+      "warnings": [
+        "Handle the person gently; do not rub limbs, use direct intense heat, or give alcohol.",
+        "If the person is unresponsive and not breathing normally, begin CPR if trained and follow emergency-dispatch instructions."
+      ],
+      "seek_help_if": [
+        "Hypothermia is suspected, especially with confusion, drowsiness, slurred speech, poor coordination, or slowing/stopping shivering."
+      ]
+    },
+    "heat_exhaustion": {
+      "title": "Suspected heat exhaustion",
+      "steps": [
+        "Stop activity and move the person to a cool or shaded place.",
+        "Loosen excess clothing and cool the skin with water, fanning, or wrapped cold packs at the neck and armpits.",
+        "If fully alert and not vomiting, give frequent small sips of cool water or an oral rehydration drink."
+      ],
+      "warnings": [
+        "Call emergency services immediately for confusion, collapse, seizure, loss of consciousness, or very hot skin; these may indicate heat stroke.",
+        "Do not force fluids into anyone who is confused, vomiting repeatedly, or unable to swallow safely."
+      ],
+      "seek_help_if": [
+        "Symptoms worsen, emergency signs appear, or the person does not improve promptly after cooling and fluids."
+      ]
+    },
+    "dehydration": {
+      "title": "Suspected dehydration",
+      "steps": [
+        "Rest in a cool or sheltered place and reduce exertion.",
+        "If fully alert and able to swallow, take frequent small sips of safe water or an oral rehydration solution.",
+        "Monitor alertness, urination, dizziness, vomiting, and whether symptoms improve."
+      ],
+      "warnings": [
+        "Call emergency services for confusion, fainting, seizure, inability to wake, severe weakness, or inability to drink.",
+        "Do not force fluids into a person who is confused, unconscious, vomiting repeatedly, or unable to swallow safely."
+      ],
+      "seek_help_if": [
+        "Symptoms are severe, worsening, or not improving with rest and fluids.",
+        "The person is very young, older, pregnant, or has a significant medical condition."
+      ]
     }
   }
 }

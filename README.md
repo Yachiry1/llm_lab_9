@@ -5,9 +5,9 @@ incrementally with Python, Groq, Gradio, and six custom Python tools. Static
 knowledge lives in a local JSON file. GitHub hosts collaboration; Render is the
 intended deployment target.
 
-The first three tools (`assess_risk`, `check_equipment`, `get_survival_guide`) and
-their static guides are implemented. The agent, UI, and other three tools remain
-placeholders. No automated tests or deployment configuration are included.
+All six tools and the survival/first-aid guides are implemented. The Groq agent
+and Gradio UI remain placeholders. No automated tests or deployment configuration
+are included.
 
 ## Project structure
 
@@ -29,7 +29,7 @@ survival-ai/
 | `app.py` | Gradio chat UI, password-masked API key input, and per-session message history; calls `agent.chat`. |
 | `agent.py` | Groq client/API communication, history processing, tool schemas, dispatch, and the tool-calling loop. |
 | `tools.py` | All six tool functions, argument validation, and reading static knowledge. No Groq or Gradio code. |
-| `survival_data.json` | Static survival guidelines under `survival_guides`. |
+| `survival_data.json` | Static guidelines under `survival_guides` and `first_aid_guides`. |
 | `requirements.txt` | Only the direct runtime dependencies: `groq` and `gradio`. |
 
 Preferred model: `openai/gpt-oss-20b`, subject to tool-calling availability on Groq
@@ -80,7 +80,7 @@ Raw exceptions and credentials must not reach the UI.
 
 All functions below live in `tools.py`. Arguments and results use only JSON types:
 strings, numbers, booleans, null, lists, and dictionaries with string keys. Python
-annotations below describe the shared interfaces; tools 4–6 are not implemented yet.
+annotations below describe the shared interfaces of the six implemented functions.
 The schemas in `agent.py` must match these names, arguments, required fields, and
 constraints. The first three Python functions default missing arguments to `None`
 so omitted required inputs return `invalid_arguments` instead of raising `TypeError`.
@@ -223,7 +223,7 @@ create_survival_plan(environment: str, weather: str, equipment: list[str], peopl
 ```
 
 `people` is a positive integer and `duration_hours` is positive. Build a prioritized
-plan from static rules and the provided context. Success `data`:
+plan from deterministic Python rules and the provided context. Success `data`:
 
 ```json
 {
@@ -244,7 +244,10 @@ The tool produces structured guidance; it does not make another model request.
 get_first_aid_guide(topic: str) -> dict
 ```
 
-`topic` is one of `bleeding`, `burns`, `sprain`, `hypothermia`, `heat_exhaustion`.
+`topic` is one of `bleeding`, `burns`, `sprain`, `hypothermia`, `heat_exhaustion`,
+or `dehydration`. Case, spaces, and hyphens are normalized. Aliases include
+`minor_cut` / `minor_cuts`, `minor_burn` / `minor_burns`,
+`suspected_hypothermia`, and `suspected_dehydration`.
 Return static first-aid information. Success `data`:
 
 ```json
@@ -261,20 +264,15 @@ Return static first-aid information. Success `data`:
 
 ## Knowledge file format
 
-`survival_data.json` currently contains only `survival_guides`. The risk rules and
-equipment dictionary are deterministic Python constants in `tools.py`; they do not
-require JSON configuration. Reserve these keys for later knowledge additions:
+`survival_data.json` contains both guide sections below. The risk rules, equipment
+dictionary, and plan rules are deterministic Python code in `tools.py`; they do not
+require JSON configuration.
 
 - `survival_guides`: map supported survival topics to guide data objects matching
   `get_survival_guide`'s success `data` shape.
 - `first_aid_guides`: map supported first-aid topics to guide data objects matching
-  `get_first_aid_guide`'s success `data` shape.
-- `plan_rules`: list of objects with `environment`, `weather`, `required_equipment`,
-  `min_people`, `max_duration_hours`, `priority`, `action`, `reason`, and `warnings`.
-  Environment and weather may be null for any value; required equipment is a list
-  that must be a subset of available items. The count and duration thresholds may
-  be null for no bound. Combine matching rules, sort by priority then file order,
-  and renumber returned steps from 1. Warnings are lists of strings.
+  `get_first_aid_guide`'s success `data` shape except `topic`, which is added by the
+  function using the normalized lookup key.
 
 Missing required knowledge produces `data_unavailable`; do not invent guideline
 content. The water tool needs no static knowledge.
