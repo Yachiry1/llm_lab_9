@@ -1,5 +1,169 @@
-"""Placeholder for the six survival tools.
+"""Three deterministic tools; see README.md for their shared contracts."""
 
-Function arguments and JSON-serializable return formats are defined in README.md.
-Implementation intentionally deferred.
-"""
+import json
+import math
+from pathlib import Path
+
+ENVIRONMENTS = {"forest", "mountain", "desert", "coastal", "urban"}
+WEATHER = {"clear", "rain", "snow", "storm", "extreme_heat", "extreme_cold"}
+DATA_PATH = Path(__file__).resolve().with_name("survival_data.json")
+
+# Category: (accepted item names, possible use).
+EQUIPMENT = {
+    "water": (["water", "drinking water"], "Drink available safe water."),
+    "water treatment": (["water filter", "purification tablets"], "Treat collected water according to product instructions."),
+    "shelter": (["tent", "tarp", "bivy", "emergency blanket"], "Provide temporary protection from exposure."),
+    "navigation": (["map", "compass", "gps"], "Help establish location and direction."),
+    "light": (["flashlight", "headlamp"], "Illuminate surroundings or signal for help."),
+    "first aid": (["first aid kit", "first-aid kit"], "Provide basic first-aid supplies."),
+    "signaling": (["whistle", "signal mirror"], "Help rescuers locate you."),
+    "warm clothing": (["warm jacket", "warm clothing"], "Add insulation in cold conditions."),
+    "rain protection": (["raincoat", "rain jacket", "poncho"], "Help keep clothing dry."),
+    "sun protection": (["sun hat", "sunscreen"], "Reduce sun exposure."),
+    "food": (["food", "snacks"], "Supply energy while waiting for help."),
+    "repair tools": (["knife", "multi-tool", "duct tape"], "Help repair equipment."),
+}
+BASE_ESSENTIALS = ["water", "shelter", "navigation", "light", "first aid", "signaling"]
+EXTRA_ESSENTIALS = {
+    "forest": ["rain protection", "water treatment"],
+    "mountain": ["warm clothing", "rain protection"],
+    "desert": ["sun protection"],
+    "coastal": ["rain protection", "sun protection"],
+    "urban": [],
+}
+TOPIC_ALIASES = {
+    "lost in the forest": "lost_in_forest", "lost in forest": "lost_in_forest",
+    "cold weather": "cold_weather", "water shortage": "water",
+    "water_shortage": "water", "emergency shelter": "shelter",
+    "emergency_shelter": "shelter",
+}
+GUIDE_TOPICS = ("lost_in_forest", "cold_weather", "water", "shelter", "fire", "navigation", "signaling")
+
+
+def _normalize(value):
+    return value.strip().lower() if isinstance(value, str) else ""
+
+
+def _string_list(value):
+    return isinstance(value, list) and all(
+        isinstance(item, str) and item.strip() for item in value
+    )
+
+
+def _error(code, message):
+    return {"ok": False, "error": {"code": code, "message": message}}
+
+
+def assess_risk(environment=None, weather=None, time_of_day=None, hazards=None,
+                temperature_c=None, has_shelter=None) -> dict:
+    """Return an educational heuristic, not a professional safety assessment."""
+    environment, weather = _normalize(environment), _normalize(weather)
+    time_of_day = _normalize(time_of_day)
+    if environment not in ENVIRONMENTS or weather not in WEATHER:
+        return _error("invalid_arguments", "Provide a supported environment and weather.")
+    if time_of_day not in {"day", "night"} or not _string_list(hazards):
+        return _error("invalid_arguments", "Provide day/night and a list of hazard strings.")
+    if temperature_c is not None:
+        if isinstance(temperature_c, bool) or not isinstance(temperature_c, (int, float)):
+            return _error("invalid_arguments", "temperature_c must be a finite number or null.")
+        try:
+            finite = math.isfinite(temperature_c)
+        except OverflowError:
+            finite = False
+        if not finite:
+            return _error("invalid_arguments", "temperature_c must be a finite number or null.")
+    if has_shelter is not None and not isinstance(has_shelter, bool):
+        return _error("invalid_arguments", "has_shelter must be true, false, or null.")
+
+    factors, recommendations = [], []
+    severity = 0
+
+    def add(level, factor, recommendation):
+        nonlocal severity
+        severity = max(severity, level)
+        factors.append(factor)
+        recommendations.append(recommendation)
+
+    if weather in {"storm", "extreme_heat", "extreme_cold"}:
+        add(2, "Severe weather reported.", "Seek suitable protection from the weather.")
+    elif weather in {"rain", "snow"}:
+        add(1, "Wet or snowy conditions.", "Keep clothing and equipment dry.")
+    if temperature_c is not None:
+        if temperature_c <= 0:
+            add(2, "Freezing temperature reported.", "Prioritize warmth and shelter.")
+        elif temperature_c < 10:
+            add(1, "Cool temperature reported.", "Use dry insulating layers.")
+        elif temperature_c >= 35:
+            add(2, "Very hot temperature reported.", "Reduce exertion and seek shade.")
+        elif temperature_c >= 30:
+            add(1, "Hot temperature reported.", "Avoid unnecessary exertion.")
+    if has_shelter is False:
+        exposed = weather != "clear" or (
+            temperature_c is not None and (temperature_c < 10 or temperature_c >= 30)
+        )
+        add(2 if exposed else 1, "No shelter available.", "Prioritize suitable shelter.")
+    if time_of_day == "night":
+        add(1, "Reduced visibility at night.", "Avoid unnecessary travel in darkness.")
+    if environment in {"mountain", "desert", "coastal"}:
+        add(1, f"Potential exposure in a {environment} environment.", "Check local terrain before moving.")
+    for hazard in dict.fromkeys(_normalize(item) for item in hazards):
+        add(2, f"Reported hazard: {hazard}.", "Avoid the reported hazard and seek help if needed.")
+    level = ["low", "medium", "high"][severity]
+    explanation = (
+        f"The highest matching rule gives a {level} risk estimate. "
+        + (" ".join(factors) if factors else "No elevated-risk rule matched the supplied context.")
+        + " This is an educational heuristic, not a professional safety assessment; "
+        "a low result does not establish safety."
+    )
+    if temperature_c is None or has_shelter is None:
+        explanation += " Temperature or shelter information is incomplete."
+    return {"ok": True, "data": {
+        "risk_level": level, "risk_factors": factors,
+        "recommendations": list(dict.fromkeys(recommendations)), "explanation": explanation,
+    }}
+
+
+def check_equipment(environment=None, equipment=None) -> dict:
+    """Compare equipment against a small environment-specific checklist."""
+    environment = _normalize(environment)
+    if environment not in ENVIRONMENTS or not _string_list(equipment):
+        return _error("invalid_arguments", "Provide a supported environment and a list of equipment strings.")
+    available = list(dict.fromkeys(_normalize(item) for item in equipment))
+    useful, present = [], set()
+    for item in available:
+        for category, (names, use) in EQUIPMENT.items():
+            if item in names:
+                present.add(category)
+                useful.append({"item": item, "possible_uses": [use]})
+                break
+    missing = [name for name in BASE_ESSENTIALS + EXTRA_ESSENTIALS[environment] if name not in present]
+    return {"ok": True, "data": {
+        "available": available, "useful_available": useful, "missing_essential": missing,
+        "recommendations": [f"Add equipment for: {name}." for name in missing],
+    }}
+
+
+def get_survival_guide(topic=None) -> dict:
+    """Load a known topic from local JSON or return a clear fallback error."""
+    topic = _normalize(topic)
+    if not topic:
+        return _error("invalid_arguments", "Provide a nonempty survival topic string.")
+    topic = TOPIC_ALIASES.get(topic, topic)
+    if topic not in GUIDE_TOPICS:
+        return _error("unsupported_topic", "No guide found. Supported topics: " + ", ".join(GUIDE_TOPICS) + ".")
+    try:
+        knowledge = json.loads(DATA_PATH.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return _error("data_unavailable", "The survival knowledge file could not be read.")
+    if not isinstance(knowledge, dict):
+        return _error("data_unavailable", "The survival knowledge file must contain an object.")
+    guides = knowledge.get("survival_guides")
+    guide = guides.get(topic) if isinstance(guides, dict) else None
+    if (not isinstance(guide, dict) or guide.get("topic") != topic
+            or not isinstance(guide.get("title"), str) or not guide["title"].strip()
+            or not _string_list(guide.get("steps")) or not guide["steps"]
+            or not _string_list(guide.get("warnings"))):
+        return _error("data_unavailable", f"The guide for {topic} is missing or invalid.")
+    return {"ok": True, "data": {
+        key: guide[key] for key in ("topic", "title", "steps", "warnings")
+    }}

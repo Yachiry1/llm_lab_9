@@ -1,1 +1,50 @@
-{}
+{
+  "survival_guides": {
+    "lost_in_forest": {
+      "topic": "lost_in_forest",
+      "title": "Lost in the forest",
+      "steps": [
+        "Pause and establish your location using your map or GPS.",
+        "If you cannot safely find your route, contact local emergency services with your location.",
+        "Remain where rescuers can find you unless immediate danger requires moving."
+      ],
+      "warnings": ["Avoid wandering into unfamiliar terrain."]
+    },
+    "cold_weather": {
+      "topic": "cold_weather",
+      "title": "Cold weather",
+      "steps": ["Put on dry insulating layers.", "Use available shelter to reduce weather exposure.", "Contact emergency services if you cannot stay warm."],
+      "warnings": ["Weather and temperature can change while you wait."]
+    },
+    "water": {
+      "topic": "water",
+      "title": "Water shortage",
+      "steps": ["Check your remaining drinking water.", "Use appropriate treatment supplies before drinking collected water.", "Seek assistance if you cannot obtain safe drinking water."],
+      "warnings": ["Do not assume untreated water is safe."]
+    },
+    "shelter": {
+      "topic": "shelter",
+      "title": "Emergency shelter",
+      "steps": ["Use a tent, tarp, bivy, or emergency blanket for protection.", "Keep yourself and your supplies dry.", "Make your location visible to rescuers."],
+      "warnings": ["Temporary shelter does not guarantee protection from severe weather."]
+    },
+    "fire": {
+      "topic": "fire",
+      "title": "Fire precautions",
+      "steps": ["Check local fire restrictions before using a fire starter."],
+      "warnings": ["Do not light a fire during high wildfire risk."]
+    },
+    "navigation": {
+      "topic": "navigation",
+      "title": "Navigation",
+      "steps": ["Use familiar navigation tools to establish your location before moving."],
+      "warnings": ["Uncertain navigation can make rescue more difficult."]
+    },
+    "signaling": {
+      "topic": "signaling",
+      "title": "Signaling for help",
+      "steps": ["Use a whistle or signal mirror to attract rescuers' attention."],
+      "warnings": ["Conserve batteries when using a light for signaling."]
+    }
+  }
+}
