@@ -5,9 +5,8 @@ incrementally with Python, Groq, Gradio, and six custom Python tools. Static
 knowledge lives in a local JSON file. GitHub hosts collaboration; Render is the
 intended deployment target.
 
-This commit contains the scaffold and shared contracts only. The agent, UI, tools,
-and survival knowledge are not implemented. No tests or deployment configuration
-are included.
+The Gradio UI, Groq agent, all six tools, and survival/first-aid guides are
+integrated. No automated tests or deployment configuration are included.
 
 ## Project structure
 
@@ -24,16 +23,15 @@ survival-ai/
 
 ## Architecture and ownership
 
-| File | Responsibility when implemented |
+| File | Responsibility |
 | --- | --- |
 | `app.py` | Gradio chat UI, password-masked API key input, and per-session message history; calls `agent.chat`. |
 | `agent.py` | Groq client/API communication, history processing, tool schemas, dispatch, and the tool-calling loop. |
 | `tools.py` | All six tool functions, argument validation, and reading static knowledge. No Groq or Gradio code. |
-| `survival_data.json` | Static survival guidelines. Currently an empty JSON object. |
+| `survival_data.json` | Static guidelines under `survival_guides` and `first_aid_guides`. |
 | `requirements.txt` | Only the direct runtime dependencies: `groq` and `gradio`. |
 
-Preferred model: `openai/gpt-oss-20b`, subject to tool-calling availability on Groq
-when the agent is implemented. Model selection belongs in `agent.py`.
+The agent uses `openai/gpt-oss-20b`. Model selection belongs in `agent.py`.
 
 Data flow: Gradio → `agent.chat` → Groq → tool calls dispatched to `tools.py` →
 JSON results returned to Groq → final response and executed tool names → Gradio.
@@ -65,14 +63,14 @@ chat(
   Use `[]` when no tool ran. A tool invocation that returns an error still counts;
   an unknown name or rejected arguments that never invoke a function do not.
 
-`app.py` will own session history using Gradio session state, append the current
-user message and returned assistant response once, and display executed tools
+`app.py` owns session history using Gradio session state, appends the current
+user message and returned assistant response once, and displays executed tools
 separately. Clearing a chat clears that session's history. API keys and messages
 must not be shared through module-level state or saved to disk. The agent creates
 its Groq messages from a copy of the supplied history; intermediate tool messages
 remain local to that invocation.
 
-The future agent will return a safe, displayable error response for missing keys,
+The agent returns a safe, displayable error response for missing keys,
 API failures, or tool-loop exhaustion, preserving the list of tools already run.
 Raw exceptions and credentials must not reach the UI.
 
@@ -80,9 +78,11 @@ Raw exceptions and credentials must not reach the UI.
 
 All functions below live in `tools.py`. Arguments and results use only JSON types:
 strings, numbers, booleans, null, lists, and dictionaries with string keys. Python
-annotations below describe the intended functions; they are not implemented yet.
+annotations below describe the shared interfaces of the six implemented functions.
 The schemas in `agent.py` must match these names, arguments, required fields, and
-constraints. There are no optional arguments or hidden defaults in these contracts.
+constraints. The first three Python functions default missing arguments to `None`
+so omitted required inputs return `invalid_arguments` instead of raising `TypeError`.
+Agent schemas require the documented required arguments.
 
 Every successful call returns `{"ok": true, "data": ...}` with the function's
 data shape below. Every invalid argument or unavailable guide returns
@@ -101,21 +101,36 @@ Shared vocabulary:
 ### 1. `assess_risk`
 
 ```python
-assess_risk(environment: str, weather: str, time_of_day: str, hazards: list[str]) -> dict
+assess_risk(environment: str, weather: str, time_of_day: str, hazards: list[str],
+            temperature_c: float | None = None, has_shelter: bool | None = None) -> dict
 ```
 
-`time_of_day` is `day` or `night`. `hazards` lists hazards reported by the user.
-Assess risk using static rules and supplied context. Success `data`:
+The first four arguments are required context. `environment` describes the survival
+situation using the shared environment vocabulary. `time_of_day` is `day` or `night`.
+`hazards` lists hazards reported by the user (use `[]` when none are reported).
+Optional `temperature_c` is a finite number in Celsius; `has_shelter` is a boolean.
+Omitted or null optional values mean unknown, not safe. Success `data`:
 
 ```json
 {
   "risk_level": "high",
   "risk_factors": ["Reported hazard or environmental risk"],
-  "recommendations": ["Suggested risk-reduction action"]
+  "recommendations": ["Suggested risk-reduction action"],
+  "explanation": "Short rule-based explanation; educational, not a professional safety assessment."
 }
 ```
 
-`risk_level` is `low`, `moderate`, or `high`; the other fields are lists of strings.
+`risk_level` is `low`, `medium`, or `high`. Factors and recommendations are lists
+of strings; explanation is a string. This updates the original `moderate` label
+to the requested `medium` before agent integration.
+
+The highest matching severity wins. High: storm/extreme weather, temperature
+at or below 0°C or at least 35°C, any reported hazard, or no shelter with adverse
+weather/temperature. Medium: rain/snow, temperature below 10°C or at least 30°C
+(outside the high bands), night, mountain/desert/coastal exposure, or no shelter.
+Otherwise low. These are project heuristics, not validated safety thresholds.
+An explanation flags missing temperature/shelter information and states that a
+low estimate does not establish safety. Inputs cannot express every real hazard.
 
 ### 2. `check_equipment`
 
@@ -123,19 +138,30 @@ Assess risk using static rules and supplied context. Success `data`:
 check_equipment(environment: str, equipment: list[str]) -> dict
 ```
 
-Compare available equipment against the environment's static checklist. Success
-`data` (all fields are lists of strings):
+Both arguments are required. Compare equipment against the small category
+dictionary in `tools.py`. Success `data`:
 
 ```json
 {
   "available": ["Reported equipment item"],
-  "missing_essential": ["Missing essential item"],
+  "useful_available": [
+    {"item": "tarp", "possible_uses": ["Provide temporary protection from exposure."]}
+  ],
+  "missing_essential": ["Missing essential category"],
   "recommendations": ["Equipment recommendation"]
 }
 ```
 
 `available` contains normalized, deduplicated supplied items. Unrecognized items
 remain in `available`; they do not satisfy unrelated checklist requirements.
+`useful_available` contains recognized supplied items and their possible uses.
+`missing_essential` lists categories, not exact item names: any recognized item
+in a category satisfies this simplified checklist, without guaranteeing adequacy.
+Core categories are water, shelter, navigation, light, first aid, and signaling.
+Forest adds rain protection and water treatment; mountain adds warm clothing and
+rain protection; desert adds sun protection; coastal adds rain and sun protection.
+Urban uses the core categories. Matching is exact after trimming and lowercasing;
+no fuzzy matching or inference about quantities, condition, or user skills occurs.
 
 ### 3. `get_survival_guide`
 
@@ -143,8 +169,13 @@ remain in `available`; they do not satisfy unrelated checklist requirements.
 get_survival_guide(topic: str) -> dict
 ```
 
-`topic` is one of `shelter`, `water`, `fire`, `navigation`, `signaling`.
-Return a static guide. Success `data`:
+`topic` is required. Canonical topics are `lost_in_forest`, `cold_weather`,
+`shelter`, `water`, `fire`, `navigation`, and `signaling`. Case and surrounding
+whitespace are ignored. Also accept `lost in the forest`, `lost in forest`,
+`cold weather`, `water shortage` / `water_shortage`, and
+`emergency shelter` / `emergency_shelter`. Water-shortage aliases return topic
+`water`; emergency-shelter aliases return `shelter`. Read the matching guide from
+`survival_data.json` on each call. Success `data`:
 
 ```json
 {
@@ -156,6 +187,9 @@ Return a static guide. Success `data`:
 ```
 
 `steps` and `warnings` are lists of strings; empty warnings are allowed.
+Unknown topics return `unsupported_topic` with the supported topics in the message;
+empty, omitted, or non-string topics return `invalid_arguments`. Missing/unreadable
+files, invalid JSON, and missing or malformed guide records return `data_unavailable`.
 
 ### 4. `estimate_water_supply`
 
@@ -187,7 +221,7 @@ create_survival_plan(environment: str, weather: str, equipment: list[str], peopl
 ```
 
 `people` is a positive integer and `duration_hours` is positive. Build a prioritized
-plan from static rules and the provided context. Success `data`:
+plan from deterministic Python rules and the provided context. Success `data`:
 
 ```json
 {
@@ -208,7 +242,10 @@ The tool produces structured guidance; it does not make another model request.
 get_first_aid_guide(topic: str) -> dict
 ```
 
-`topic` is one of `bleeding`, `burns`, `sprain`, `hypothermia`, `heat_exhaustion`.
+`topic` is one of `bleeding`, `burns`, `sprain`, `hypothermia`, `heat_exhaustion`,
+or `dehydration`. Case, spaces, and hyphens are normalized. Aliases include
+`minor_cut` / `minor_cuts`, `minor_burn` / `minor_burns`,
+`suspected_hypothermia`, and `suspected_dehydration`.
 Return static first-aid information. Success `data`:
 
 ```json
@@ -223,56 +260,54 @@ Return static first-aid information. Success `data`:
 
 `steps`, `warnings`, and `seek_help_if` are lists of strings.
 
-## Planned knowledge file format
+## Knowledge file format
 
-`survival_data.json` is currently `{}`. When knowledge is added, use these top-level
-keys so both developers can work against the same layout:
+`survival_data.json` contains both guide sections below. The risk rules, equipment
+dictionary, and plan rules are deterministic Python code in `tools.py`; they do not
+require JSON configuration.
 
 - `survival_guides`: map supported survival topics to guide data objects matching
   `get_survival_guide`'s success `data` shape.
 - `first_aid_guides`: map supported first-aid topics to guide data objects matching
-  `get_first_aid_guide`'s success `data` shape.
-- `equipment_checklists`: map environments to objects with `essential` and
-  `recommended` lists of equipment strings.
-- `risk_rules`: list of objects with `environment`, `weather`, `time_of_day`,
-  `hazard`, `risk_level`, `risk_factor`, and `recommendations`. Context fields are
-  strings or null, where null means any value. All specified context fields must
-  match; a specified hazard matches an item in the supplied hazards. Combine
-  matching factors and recommendations; use the highest matching risk level,
-  defaulting to `low` when none match.
-- `plan_rules`: list of objects with `environment`, `weather`, `required_equipment`,
-  `min_people`, `max_duration_hours`, `priority`, `action`, `reason`, and `warnings`.
-  Environment and weather may be null for any value; required equipment is a list
-  that must be a subset of available items. The count and duration thresholds may
-  be null for no bound. Combine matching rules, sort by priority then file order,
-  and renumber returned steps from 1. Warnings are lists of strings.
+  `get_first_aid_guide`'s success `data` shape except `topic`, which is added by the
+  function using the normalized lookup key.
 
 Missing required knowledge produces `data_unavailable`; do not invent guideline
 content. The water tool needs no static knowledge.
 
+The short guide content and equipment categories draw on the National Park Service
+[Ten Essentials](https://www.nps.gov/articles/10essentials.htm) and
+[Outdoor Emergency Plan](https://www.nps.gov/articles/gtgemergencyplan.htm).
+They are educational summaries; the numerical risk bands are project rules.
+
 ## Local setup
 
-From this directory, create and activate a Python virtual environment, then install:
+Use Python 3.10 or newer. From the project root, run in PowerShell:
 
 ```text
 python -m venv .venv
-python -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe app.py
 ```
 
-Run the install command after activating the environment using your shell's
-activation command. Dependencies are intentionally unpinned at this scaffold stage;
-record compatible versions after integration. There is no runnable app yet.
+Open `http://localhost:7860`, enter your Groq API key, and send a message. The UI
+shows tools executed for the latest response below the conversation. Clear Chat
+resets this session's conversation and tools display; it leaves the key input intact.
+The direct dependencies are pinned to the versions used for integration checks.
+On other platforms, use `.venv/bin/python` for the install and launch commands.
 
-The future UI must accept the user's own Groq API key through a password-masked
-input. Do not put real keys in source files, example messages, screenshots, or Git
+The UI accepts the user's own Groq API key through a password-masked input.
+The key is passed to a per-request Groq client, not stored in conversation history,
+files, or application logs. Do not put real keys in source files, example messages, screenshots, or Git
 history. `.env` files are ignored but are not required for this UI-based flow.
 
 ## Incremental collaboration
 
-Agree on these contracts before implementation. A suggested split is Developer 1
-owning `agent.py`, and Developer 2 owning `tools.py` and `survival_data.json`.
-Implement `app.py` in a later integration branch using the documented `chat`
-contract. Coordinate any contract changes in the README and both affected modules.
+Developer 1 owns the AI/backend work, including `agent.py` and this first increment
+of three tools on `feature/ai-agent`. Coordinate later edits to shared `tools.py`
+and `survival_data.json` with Developer 2 to avoid conflicting changes.
+Developer 2 owns the Gradio UI and the other three tools. Coordinate any contract
+changes in the README and both affected modules.
 
 Start with a scaffold commit. For each increment, branch from the latest `main`,
 make focused commits, push the branch to GitHub, and open a pull request for the
@@ -283,5 +318,4 @@ other developer to review before merging. Suggested increments:
 3. Integrate the Gradio UI, user-entered keys, and session history.
 4. Prepare and verify deployment on Render after local integration works.
 
-Do not commit secrets. Deployment setup and runtime implementation belong to later
-increments.
+Do not commit secrets. Render deployment setup remains a later increment.

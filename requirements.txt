@@ -1,2 +1,2 @@
-groq
-gradio
+groq==1.7.0
+gradio==6.31.0
